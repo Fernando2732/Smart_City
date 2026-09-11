@@ -3,3 +3,4 @@ __pycache__/
 *.db
 jsons/
 .ipynb_checkpoints/
+.venv
