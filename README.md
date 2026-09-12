@@ -195,12 +195,14 @@ Com os dados carregados, podem ser feitas análises como:
 
 ## Integrantes
 
-- [GabrielHen-dev](https://github.com/GabrielHen-dev)
-- [dgcavalcante](https://github.com/dgcavalcante)
-- [lucaschavessf](https://github.com/lucaschavessf)
-- [allyssonifx](https://github.com/allyssonifx)
-- [Fernando2732](https://github.com/Fernando2732)
-- [MatheusAS1](https://github.com/MatheusAS1)
+- [Gabriel Henrique](https://github.com/GabrielHen-dev)
+- [Diogo Cavalcante](https://github.com/dgcavalcante)
+- [Lucas Chaves](https://github.com/lucaschavessf)
+- [Allysson](https://github.com/allyssonifx)
+- [Fernando Marinho](https://github.com/Fernando2732)
+- [Matheus Andrade](https://github.com/MatheusAS1)
+- [Carlos Henrique](https://github.com/Carlos-HenriqueDev)
+- [Allana Gadêlha](https://github.com/Allana-Gadelha)
 
 ## Referências
 
