@@ -4,11 +4,14 @@ import pandas as pd
 class Transform:
 
     def __init__(self):
+        """Inicializa a classe responsável pela transformação dos dados."""
         pass
 
-    def transform_clima(self, data: list[dict]) -> pd.DataFrame:
-
-        dados_por_hora = data[0]["hourly"]
+    def transform_clima(self, data: dict) -> pd.DataFrame:
+        """
+        Recebe o dicionário bruto da API e o converte em um DataFrame limpo e tipado.
+        """
+        dados_por_hora = data["hourly"]
 
         df = pd.DataFrame(dados_por_hora)
 

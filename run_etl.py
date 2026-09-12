@@ -12,7 +12,6 @@ def executar_pipeline() -> None:
     print("Iniciando Extração...")
     extractor = Extract()
     dados_brutos = extractor.clima(cidade, data_inicio, data_fim)
-    extractor.close()
 
     print("Iniciando Transformação...")
     transformer = Transform()
