@@ -201,6 +201,8 @@ Com os dados carregados, podem ser feitas análises como:
 - [allyssonifx](https://github.com/allyssonifx)
 - [Fernando2732](https://github.com/Fernando2732)
 - [MatheusAS1](https://github.com/MatheusAS1)
+- [Carlos Henrique](https://github.com/Carlos-HenriqueDev)
+- [Allana Gadêlha](https://github.com/Allana-Gadelha)
 
 ## Referências
 
