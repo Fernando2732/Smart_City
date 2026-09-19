@@ -1,197 +1,130 @@
 # Cidade Inteligente: ETL de dados climáticos
 
-Projeto desenvolvido para a disciplina de Engenharia de Dados e Big Data com o objetivo de aplicar um pipeline **ETL (Extract, Transform, Load)** a uma fonte pública relacionada a Smart Cities.
-
-A fonte escolhida foi a [Open-Meteo](https://open-meteo.com/), uma API pública de dados meteorológicos que não exige chave de acesso. O pipeline consulta dados climáticos históricos por cidade, grava o dado bruto no MongoDB, organiza os registros horários com pandas e grava o resultado transformado em SQLite.
-
-## Objetivo do projeto
-
-Reaproveitar a estrutura do projeto original da disciplina para trabalhar com uma nova fonte de dados de interesse urbano. Os dados de clima podem apoiar análises de temperatura, umidade e chuva em uma cidade ao longo do tempo.
-
-## Arquitetura
-
-O projeto está dividido em três responsabilidades:
-
-- **Extract** (`src/extract.py`): consulta a API Open-Meteo e retorna o JSON bruto. A classe mantém um dicionário de cidades e suas coordenadas, valida a cidade informada e usa `requests.get()` com `raise_for_status()`.
-- **Transform** (`src/transform.py`): extrai a série horária do JSON, cria um `DataFrame`, renomeia as colunas, converte os tipos e substitui valores ausentes de chuva por `0.0`.
-- **Load** (`src/load.py`): disponibiliza a persistência dos dados brutos em arquivo JSON e MongoDB, além da gravação do `DataFrame` transformado em uma tabela SQLite.
-
-Fluxo resumido:
+Projeto da disciplina de Engenharia de Dados e Big Data que implementa, em Python e com orientação a objetos, o fluxo obrigatório:
 
 ```text
-Open-Meteo
-    |
-    v
-Extract.clima()
-    |
-    v
-JSON bruto -> JSON / MongoDB
-    |
-    v
-Transform.transform_clima()
-    |
-    v
-DataFrame -> SQLite
-
+API Open-Meteo
+      ↓
+MongoDB Atlas (dados brutos)
+      ↓
+Transformação com pandas
+      ↓
+NeonDB/PostgreSQL (dados tratados)
 ```
 
-## Fonte de dados
+Os dados da API são gravados primeiro no Atlas. O pipeline recupera exatamente o documento recém-gravado, transforma sua série horária e só então carrega o resultado no NeonDB.
 
-O projeto utiliza o endpoint histórico da Open-Meteo:
+## Organização
 
-`https://archive-api.open-meteo.com/v1/archive`
+- `src/extract.py`: consulta a Open-Meteo e recupera dados brutos do Atlas;
+- `src/transform.py`: converte o JSON bruto em um `DataFrame` limpo e tipado;
+- `src/load.py`: carrega dados brutos no Atlas e dados tratados no NeonDB;
+- `run_etl.py`: orquestra o fluxo completo na ordem exigida.
 
-As variáveis horárias consultadas são:
-
-- `temperature_2m`: temperatura a 2 metros;
-- `relative_humidity_2m`: umidade relativa;
-- `rain`: precipitação em milímetros.
-
-As cidades disponíveis em `Extract.CIDADES` são:
-
-- `recife`;
-- `sao_paulo`;
-- `rio_de_janeiro`;
-- `brasilia`.
-
-Também é possível informar os nomes com espaços e letras maiúsculas, pois o método normaliza o valor recebido.
-
-## Estrutura do projeto
-
-```text
-.
-├── jsons/
-│   └── clima_recife.json       # exemplo de dado bruto
-├── notebooks/
-│   └── teste.ipynb             # exploração do DataFrame
-├── src/
-│   ├── extract.py              # extração na API e leitura do MongoDB
-│   ├── load.py                 # cargas em JSON, MongoDB e SQLite
-│   └── transform.py            # transformação com pandas
-├── requirements.txt
-└── run_etl.py                  # execução do pipeline
-```
+As cidades cadastradas são `recife`, `sao_paulo`, `rio_de_janeiro` e `brasilia`. O exemplo executado usa Recife, de 1 a 7 de janeiro de 2024, totalizando 168 medições horárias.
 
 ## Requisitos
 
 - Python 3.10 ou superior;
-- acesso à internet para consultar a Open-Meteo;
-- uma instância MongoDB acessível;
-- `pip` para instalar as dependências.
-
-As bibliotecas utilizadas estão em `requirements.txt`:
-
-- `requests`;
-- `pandas`;
-- `pymongo`;
-- `python-dotenv`.
+- cluster e usuário configurados no MongoDB Atlas;
+- projeto e banco PostgreSQL configurados no Neon;
+- acesso à internet.
 
 ## Instalação
 
-No terminal, na raiz do projeto:
-
-```bash
-python -m venv .venv
-```
-
-Ative o ambiente virtual:
+No PowerShell, na raiz do projeto:
 
 ```powershell
+python -m venv .venv
 .venv\Scripts\Activate.ps1
-```
-
-No Linux ou macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Instale as dependências:
-
-```bash
 pip install -r requirements.txt
 ```
 
-## Configuração do MongoDB
+Se você já usa o ambiente virtual `env`, basta ativá-lo e executar novamente o comando de instalação para adicionar o driver PostgreSQL.
 
-Crie um arquivo `.env` na raiz do projeto com a variável `MONGODB_URI`:
+## Variáveis de ambiente
+
+Crie ou complete o arquivo `.env` na raiz:
 
 ```env
-MONGODB_URI=mongodb+srv://usuario:senha@cluster.exemplo.mongodb.net/?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://USUARIO:SENHA@SEU_CLUSTER.mongodb.net/?retryWrites=true&w=majority
+NEON_DATABASE_URL=postgresql://USUARIO:SENHA@SEU_ENDPOINT.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
 
-Não versionar o arquivo `.env`, pois ele pode conter credenciais de acesso.
+### MongoDB Atlas
+
+No Atlas, use **Connect → Drivers → Python**, copie a URI e substitua a senha. O IP da máquina deve estar liberado em **Network Access**.
+
+### NeonDB
+
+1. Crie uma conta e um projeto em <https://console.neon.tech/>.
+2. No painel do projeto, clique em **Connect**.
+3. Selecione a branch, o banco e o usuário desejados.
+4. Escolha **Python** ou apenas copie a **Connection string**.
+5. Cole a URI completa em `NEON_DATABASE_URL`.
+
+Não versionar o `.env`: ele contém as senhas dos dois bancos. Arquivos terminados em `.env` também estão ignorados pelo Git.
 
 ## Execução
 
-Execute:
-
-```bash
+```powershell
 python run_etl.py
 ```
 
-O script atualmente consulta:
+O console demonstra explicitamente as quatro etapas:
 
-- cidade: `recife`;
-- início: `2024-01-01`;
-- fim: `2024-01-07`;
-- fuso horário: `America/Sao_Paulo`.
-
-Ao final, o dado bruto é inserido no banco `cidade_inteligente`, na coleção `clima_recife`, o `DataFrame` é gravado no banco `clima.db`, na tabela `historico_clima`, e uma cópia do dado bruto é salva em `jsons/clima_recife.json`.
-
-## Dados transformados
-
-O método `Transform.transform_clima()` produz as seguintes colunas:
-
-| Coluna | Descrição |
-| --- | --- |
-| `data_hora` | data e hora do registro |
-| `temperatura` | temperatura em graus Celsius |
-| `umidade` | umidade relativa em porcentagem |
-| `chuva` | precipitação em milímetros |
-
-`data_hora` é convertida para o tipo de data/hora do pandas. As medidas numéricas são convertidas para `float`, e valores ausentes de chuva são preenchidos com `0.0`.
-
-## Persistência
-
-O projeto possui os seguintes métodos de carga:
-
-- `Load.load_json()`: salva uma cópia do dado bruto em `jsons/`;
-- `Load.load_mongo()`: insere o dado bruto em uma coleção MongoDB definida pelos parâmetros `db_name` e `collection_name`;
-- `Load.load_sqlite()`: salva o `DataFrame` em uma tabela SQLite, substituindo a tabela existente quando ela já existe.
-
-O fluxo executado usa `load_json()`, `load_mongo()` e `load_sqlite()`. A chamada utilizada para a coleção climática é:
-
-```python
-loader.load_mongo(
-    dados_brutos,
-    db_name="cidade_inteligente",
-    collection_name=f"clima_{cidade}",
-)
+```text
+1/4 - Extraindo dados da API...
+2/4 - Armazenando dados brutos no MongoDB Atlas...
+3/4 - Recuperando do Atlas e transformando...
+4/4 - Armazenando dados transformados no NeonDB...
 ```
 
-Depois dessa chamada, é recomendado executar `loader.close()` quando todas as cargas terminarem.
+## Bancos gerados
+
+No MongoDB Atlas, cada execução adiciona o JSON bruto em:
+
+- banco: `cidade_inteligente`;
+- coleção: `clima_recife`.
+
+No NeonDB, o método cria automaticamente a tabela `historico_clima` com:
+
+| Coluna | Tipo | Descrição |
+| --- | --- | --- |
+| `id` | `BIGSERIAL` | chave primária |
+| `cidade` | `VARCHAR(100)` | cidade consultada |
+| `data_hora` | `TIMESTAMP` | data e hora da medição |
+| `temperatura` | `DOUBLE PRECISION` | temperatura em °C |
+| `umidade` | `DOUBLE PRECISION` | umidade relativa em % |
+| `chuva` | `DOUBLE PRECISION` | precipitação em mm |
+
+A combinação `cidade + data_hora` é única. Se o pipeline for executado novamente para o mesmo período, os valores são atualizados por `upsert`, sem duplicar as medições no Neon.
+
+Para conferir no **SQL Editor** do Neon:
+
+```sql
+SELECT COUNT(*) FROM historico_clima;
+
+SELECT *
+FROM historico_clima
+ORDER BY data_hora
+LIMIT 10;
+```
+
+## Tratamento dos dados
+
+`Transform.transform_clima()` renomeia as colunas da API para `data_hora`, `temperatura`, `umidade` e `chuva`; converte data/hora e números para seus tipos apropriados; e substitui chuva ausente por `0.0`.
 
 ## Critérios atendidos
 
-- consumo de uma API pública real de Smart City;
-- método de extração com parâmetros tipados;
-- validação das cidades disponíveis por meio de dicionário de classe;
-- URL da API centralizada como atributo da classe `Extract`;
-- transformação do JSON bruto em `pandas.DataFrame`;
-- persistência em SQLite;
-- persistência do bruto em MongoDB usando `MONGODB_URI`;
-- separação das responsabilidades em `Extract`, `Transform` e `Load`.
-
-## Possíveis análises
-
-Com os dados carregados, podem ser feitas análises como:
-
-- variação horária da temperatura;
-- comparação de umidade entre cidades;
-- identificação de períodos com chuva;
-- comparação de condições climáticas entre diferentes intervalos de datas;
-- criação de gráficos e indicadores para apoiar decisões de uma cidade inteligente.
+- API pública relacionada a Smart Cities;
+- código Python organizado nas classes `Extract`, `Transform` e `Load`;
+- dados brutos persistidos no banco NoSQL MongoDB Atlas;
+- leitura do documento diretamente do Atlas antes da transformação;
+- transformação com pandas;
+- dados tratados persistidos no banco relacional PostgreSQL do NeonDB;
+- conexões protegidas por variáveis de ambiente;
+- carga relacional repetível sem duplicação.
 
 ## Integrantes
 
@@ -207,6 +140,7 @@ Com os dados carregados, podem ser feitas análises como:
 ## Referências
 
 - [Open-Meteo](https://open-meteo.com/)
-- [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api)
+- [MongoDB PyMongo](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/)
+- [Neon Docs](https://neon.com/docs/)
+- [Psycopg](https://www.psycopg.org/psycopg3/docs/)
 - [Pandas](https://pandas.pydata.org/docs/)
-- [PyMongo](https://pymongo.readthedocs.io/)

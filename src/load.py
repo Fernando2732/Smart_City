@@ -1,84 +1,108 @@
+import json
+import os
+from typing import Any
+
+import pandas as pd
+import psycopg
+from bson import ObjectId
+from dotenv import load_dotenv
+from psycopg import sql
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-import os
-import json
-from dotenv import load_dotenv
-import sqlite3
-import pandas as pd
 
 load_dotenv()
 
 
 class Load:
+    def __init__(self) -> None:
+        mongo_uri = os.getenv("MONGODB_URI")
+        if not mongo_uri:
+            raise RuntimeError("Defina MONGODB_URI no arquivo .env.")
 
-
-    def __init__(self):
-
-        """Inicializa as variáveis de ambiente e a conexão com o MongoDB."""
-
-        self.mongo_uri = os.getenv("MONGODB_URI")
-        self.client = MongoClient(self.mongo_uri, server_api=ServerApi("1"))
+        self.neon_url = os.getenv("NEON_DATABASE_URL") or os.getenv("DATABASE_URL")
+        self.client = MongoClient(mongo_uri, server_api=ServerApi("1"))
 
     def close(self) -> None:
-
-        """
-        Encerra a conexão ativa com o cluster do MongoDB.
-        """
-
         self.client.close()
 
-    def load_json(self, nome_arquivo: str, data: list[dict]) -> None:
+    def load_json(self, nome_arquivo: str, data: dict[str, Any]) -> None:
+        os.makedirs("jsons", exist_ok=True)
+        caminho = f"jsons/{nome_arquivo}.json"
+        with open(caminho, "w", encoding="utf-8") as arquivo:
+            json.dump(data, arquivo, ensure_ascii=False, indent=2)
+        print(f"Dados salvos em '{caminho}'.")
 
-        """
-        Salva o dicionário de dados brutos em um arquivo JSON local.
-        
-        Args:
-            nome_arquivo (str): O nome do arquivo a ser criado (sem a extensão).
-            data (dict): O dicionário contendo os dados extraídos da API.
-        """
+    def load_mongo(
+        self, data: dict[str, Any], db_name: str, collection_name: str
+    ) -> ObjectId:
+        if not data:
+            raise ValueError("Não há dados para inserir no MongoDB Atlas.")
 
-        os.makedirs("jsons", exist_ok=True) 
-        
-        with open(f"jsons/{nome_arquivo}.json", "w", encoding="UTF-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        resultado = self.client[db_name][collection_name].insert_one(data.copy())
+        print(f"Dados inseridos no Atlas: '{db_name}.{collection_name}'.")
+        return resultado.inserted_id
 
-        print(f"Dados salvos com sucesso em 'jsons/{nome_arquivo}.json'!")
-
-    def load_mongo(self, data: list[dict], db_name: str, collection_name: str) -> None:
-        """
-        Insere os dados originais da API em uma coleção específica do MongoDB.
-        
-        Args:
-            data (dict): O dicionário de dados brutos extraído da API.
-            db_name (str): O nome do banco de dados no MongoDB.
-            collection_name (str): O nome da coleção onde os dados serão salvos.
-        """
-
-        collection = self.client[db_name][collection_name]
-
-        if data:
-            collection.insert_one(data)
-
-        print(f"Dados inseridos com sucesso na coleção '{collection_name}'!")
-
-    def load_sqlite(    
+    def load_neon(
         self,
         df: pd.DataFrame,
-        nome_banco: str = "clima.db",
+        cidade: str,
         nome_tabela: str = "historico_clima",
     ) -> None:
+        if not self.neon_url:
+            raise RuntimeError(
+                "Defina NEON_DATABASE_URL (ou DATABASE_URL) no arquivo .env."
+            )
+        if df.empty:
+            raise ValueError("Não há dados transformados para inserir no NeonDB.")
 
-        """
-        Salva o DataFrame transformado em uma tabela de um banco SQLite local.
-        
-        Args:
-            df (pd.DataFrame): O DataFrame contendo os dados já limpos e estruturados.
-            nome_banco (str): O nome do arquivo do banco de dados SQLite.
-            nome_tabela (str): O nome da tabela onde os dados serão inseridos.
-        """
+        colunas = ["data_hora", "temperatura", "umidade", "chuva"]
+        ausentes = set(colunas) - set(df.columns)
+        if ausentes:
+            raise ValueError(f"Colunas ausentes para carga no Neon: {sorted(ausentes)}")
 
-        conn = sqlite3.connect(nome_banco)
-        df.to_sql(nome_tabela, conn, if_exists="replace", index=False)
-        conn.close()
+        def valor_python(valor: Any) -> Any:
+            if pd.isna(valor):
+                return None
+            if isinstance(valor, pd.Timestamp):
+                return valor.to_pydatetime()
+            return valor.item() if hasattr(valor, "item") else valor
 
-        print(f"Dados salvos com sucesso na tabela '{nome_tabela}' do banco '{nome_banco}'!")
+        registros = [
+            (cidade, *(valor_python(valor) for valor in linha))
+            for linha in df[colunas].itertuples(index=False, name=None)
+        ]
+
+        tabela = sql.Identifier(nome_tabela)
+        criar_tabela = sql.SQL(
+            """
+            CREATE TABLE IF NOT EXISTS {} (
+                id BIGSERIAL PRIMARY KEY,
+                cidade VARCHAR(100) NOT NULL,
+                data_hora TIMESTAMP NOT NULL,
+                temperatura DOUBLE PRECISION,
+                umidade DOUBLE PRECISION,
+                chuva DOUBLE PRECISION,
+                UNIQUE (cidade, data_hora)
+            )
+            """
+        ).format(tabela)
+        inserir = sql.SQL(
+            """
+            INSERT INTO {} (cidade, data_hora, temperatura, umidade, chuva)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (cidade, data_hora) DO UPDATE SET
+                temperatura = EXCLUDED.temperatura,
+                umidade = EXCLUDED.umidade,
+                chuva = EXCLUDED.chuva
+            """
+        ).format(tabela)
+
+        with psycopg.connect(self.neon_url) as conexao:
+            with conexao.cursor() as cursor:
+                cursor.execute(criar_tabela)
+                cursor.executemany(inserir, registros)
+
+        print(
+            f"{len(registros)} registros carregados no NeonDB "
+            f"(tabela '{nome_tabela}')."
+        )

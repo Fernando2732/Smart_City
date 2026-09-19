@@ -1,6 +1,44 @@
-__pycache__/
+# Credenciais e variáveis de ambiente
 .env
+.env.*
+*.env
+!.env.example
+atlas-credentials.env
+
+# Ambientes virtuais Python
+.venv/
+venv/
+env/
+ENV/
+
+# Cache e arquivos compilados do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testes, cobertura e ferramentas de análise
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build e empacotamento
+build/
+dist/
+*.egg-info/
+
+# Dados e artefatos gerados localmente
 *.db
+*.sqlite
+*.sqlite3
+*.log
 jsons/
+
+# Jupyter, IDEs e sistema operacional
 .ipynb_checkpoints/
-.venv
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

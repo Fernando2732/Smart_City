@@ -4,13 +4,9 @@ import pandas as pd
 class Transform:
 
     def __init__(self):
-        """Inicializa a classe responsável pela transformação dos dados."""
         pass
 
     def transform_clima(self, data: dict) -> pd.DataFrame:
-        """
-        Recebe o dicionário bruto da API e o converte em um DataFrame limpo e tipado.
-        """
         dados_por_hora = data["hourly"]
 
         df = pd.DataFrame(dados_por_hora)
@@ -28,7 +24,7 @@ class Transform:
         df["data_hora"] = pd.to_datetime(df["data_hora"])
         df["temperatura"] = df["temperatura"].astype(float)
         df["umidade"] = df["umidade"].astype(float)
-        df["chuva"] = df["chuva"].fillna(0.0).astype(float) # Substitui NaN por 0
+        df["chuva"] = df["chuva"].fillna(0.0).astype(float)
 
         print("Dados transformados com sucesso!")
         return df
