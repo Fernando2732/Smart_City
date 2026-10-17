@@ -3,3 +3,4 @@ pymongo
 python-dotenv
 pandas
 psycopg[binary]
+prefect>=3,<4

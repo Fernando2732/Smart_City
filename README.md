@@ -19,7 +19,8 @@ Os dados da API são gravados primeiro no Atlas. O pipeline recupera exatamente 
 - `src/extract.py`: consulta a Open-Meteo e recupera dados brutos do Atlas;
 - `src/transform.py`: converte o JSON bruto em um `DataFrame` limpo e tipado;
 - `src/load.py`: carrega dados brutos no Atlas e dados tratados no NeonDB;
-- `run_etl.py`: orquestra o fluxo completo na ordem exigida.
+- `orchestration_prefect.py`: define as quatro tasks e o flow sequencial do Prefect;
+- `run_etl.py`: ponto de entrada que chama o flow.
 
 As cidades cadastradas são `recife`, `sao_paulo`, `rio_de_janeiro` e `brasilia`. O exemplo executado usa Recife, de 1 a 7 de janeiro de 2024, totalizando 168 medições horárias.
 
@@ -40,7 +41,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Se você já usa o ambiente virtual `env`, basta ativá-lo e executar novamente o comando de instalação para adicionar o driver PostgreSQL.
+Se você já usa o ambiente virtual `env`, basta ativá-lo e executar novamente o comando de instalação para adicionar as dependências, incluindo o Prefect 3.
 
 ## Variáveis de ambiente
 
@@ -79,6 +80,27 @@ O console demonstra explicitamente as quatro etapas:
 3/4 - Recuperando do Atlas e transformando...
 4/4 - Armazenando dados transformados no NeonDB...
 ```
+
+O flow `ETL Clima Open-Meteo` chama as tasks diretamente, uma por vez:
+
+- `extract`: consulta a API com `Extract.clima()`;
+- `load_data`: grava o JSON bruto com `Load.load_mongo()` e retorna seu `ObjectId`;
+- `transform`: recupera esse documento do Atlas e chama `Transform.transform_clima()`;
+- `load_neon`: envia o `DataFrame` para `Load.load_neon()`, mantendo a tabela `historico_clima`.
+
+Cada task só inicia após a anterior terminar com sucesso. Falhas são propagadas ao flow e impedem as próximas etapas. As conexões MongoDB de cada task são fechadas em `finally`; a conexão PostgreSQL continua sendo gerenciada pelo método de carga existente.
+
+A extração e a carga no Neon têm até três retries, com intervalo de dez segundos. A carga no Neon usa o `upsert` existente. A escrita no MongoDB e o flow completo têm retries desativados, pois repetir `insert_one` criaria outro documento bruto. Novas execuções manuais continuam adicionando um documento no Atlas, conforme o comportamento original. A persistência de resultados das tasks está desativada para que cada execução processe seus próprios dados.
+
+O Prefect registra estados e logs das tasks e do flow. A execução local não exige agendamentos, deployments, workers ou Prefect Cloud.
+
+Para validar localmente, sem consultar a API nem escrever nos bancos:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Os testes de orquestração usam o Prefect real com API, MongoDB e Neon substituídos por mocks. A validação de ponta a ponta depende das credenciais no `.env` e de acesso aos serviços.
 
 ## Bancos gerados
 
@@ -124,7 +146,8 @@ LIMIT 10;
 - transformação com pandas;
 - dados tratados persistidos no banco relacional PostgreSQL do NeonDB;
 - conexões protegidas por variáveis de ambiente;
-- carga relacional repetível sem duplicação.
+- carga relacional repetível sem duplicação;
+- orquestração sequencial com tasks, flow, logs e retries do Prefect.
 
 ## Integrantes
 
@@ -144,3 +167,5 @@ LIMIT 10;
 - [Neon Docs](https://neon.com/docs/)
 - [Psycopg](https://www.psycopg.org/psycopg3/docs/)
 - [Pandas](https://pandas.pydata.org/docs/)
+- [Prefect: tasks](https://docs.prefect.io/v3/concepts/tasks)
+- [Prefect: retries](https://docs.prefect.io/v3/how-to-guides/workflows/retries)
