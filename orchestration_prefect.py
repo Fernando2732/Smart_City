@@ -2,14 +2,11 @@ from typing import Any
 
 import pandas as pd
 from bson import ObjectId
-from dotenv import load_dotenv
 from prefect import flow, get_run_logger, task
 
 from src.extract import Extract
 from src.load import Load
 from src.transform import Transform
-
-load_dotenv()
 
 
 @task(retries=3, retry_delay_seconds=10, persist_result=False)
@@ -57,6 +54,14 @@ def transform(
         extractor.close()
 
     df = Transform().transform_clima(dados)
+    quantidade_bruta = len(dados["hourly"]["time"])
+    if len(df) != quantidade_bruta:
+        raise ValueError("A quantidade de medições mudou durante a transformação.")
+    logger.info(
+        "Conferência bronze -> transformação: %s -> %s medições.",
+        quantidade_bruta,
+        len(df),
+    )
     logger.info("%s linhas transformadas de %s.%s.", len(df), db_name, collection_name)
     return df
 

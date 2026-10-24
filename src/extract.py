@@ -1,13 +1,11 @@
-import os
 from typing import Any
 
 import requests
 from bson import ObjectId
-from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
-load_dotenv()
+from src import config
 
 
 class Extract:
@@ -23,7 +21,7 @@ class Extract:
         self.hourly_variables = "temperature_2m,relative_humidity_2m,rain"
         self.timezone = "America/Sao_Paulo"
 
-        mongo_uri = os.getenv("MONGODB_URI")
+        mongo_uri = config.MONGODB_URI
         if not mongo_uri:
             raise RuntimeError("Defina MONGODB_URI no arquivo .env.")
 

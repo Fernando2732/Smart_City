@@ -105,7 +105,7 @@ class OrchestrationTest(unittest.TestCase):
         self.extractor.extract_collection_from_mongo.assert_not_called()
         df = self.loader.load_neon.call_args.args[0]
         self.assertEqual(df["temperatura"].tolist(), [28.4])
-        self.assertEqual(df["chuva"].tolist(), [0.0])
+        self.assertTrue(pd.isna(df["chuva"].iloc[0]))
         self.assertTrue(pd.api.types.is_datetime64_any_dtype(df["data_hora"]))
         self.assertEqual(self.loader.load_neon.call_args.kwargs, {"cidade": "recife"})
         self.assertEqual(self.extractor.close.call_count, 2)

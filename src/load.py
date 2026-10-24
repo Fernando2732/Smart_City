@@ -1,25 +1,25 @@
 import json
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
 import psycopg
 from bson import ObjectId
-from dotenv import load_dotenv
 from psycopg import sql
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
-load_dotenv()
+from src import config
 
 
 class Load:
     def __init__(self) -> None:
-        mongo_uri = os.getenv("MONGODB_URI")
+        mongo_uri = config.MONGODB_URI
         if not mongo_uri:
             raise RuntimeError("Defina MONGODB_URI no arquivo .env.")
 
-        self.neon_url = os.getenv("NEON_DATABASE_URL") or os.getenv("DATABASE_URL")
+        self.neon_url = config.NEON_DATABASE_URL
         self.client = MongoClient(mongo_uri, server_api=ServerApi("1"))
 
     def close(self) -> None:
@@ -38,7 +38,9 @@ class Load:
         if not data:
             raise ValueError("Não há dados para inserir no MongoDB Atlas.")
 
-        resultado = self.client[db_name][collection_name].insert_one(data.copy())
+        documento = data.copy()
+        documento["data_extracao"] = datetime.now(timezone.utc)
+        resultado = self.client[db_name][collection_name].insert_one(documento)
         print(f"Dados inseridos no Atlas: '{db_name}.{collection_name}'.")
         return resultado.inserted_id
 

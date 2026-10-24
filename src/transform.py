@@ -24,7 +24,7 @@ class Transform:
         df["data_hora"] = pd.to_datetime(df["data_hora"])
         df["temperatura"] = df["temperatura"].astype(float)
         df["umidade"] = df["umidade"].astype(float)
-        df["chuva"] = df["chuva"].fillna(0.0).astype(float)
+        df["chuva"] = df["chuva"].astype(float)
 
         print("Dados transformados com sucesso!")
         return df
