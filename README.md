@@ -163,6 +163,8 @@ Para corrigir possíveis zeros artificiais de uma execução anterior, execute n
 
 O notebook `notebooks/teste.ipynb` é um experimento anterior com SQLite e não participa do pipeline entregue. Use `run_etl.py` e os módulos de `src` para executar a versão atual.
 
+<img width="886" height="884" alt="image" src="https://github.com/user-attachments/assets/1e4563a3-4478-412d-b0e0-5a0a301e7fb5" />
+
 ## Conferência da carga
 
 Depois de rodar o pipeline, confira as quantidades nos logs. Para Recife, de 01/01/2024 a 07/01/2024, são esperadas 168 medições no documento bruto, na transformação e no Neon para esse mesmo recorte. Um documento no Mongo contém vários horários; não compare a quantidade de documentos com a quantidade de linhas SQL.
