@@ -160,9 +160,8 @@ Para corrigir possíveis zeros artificiais de uma execução anterior, execute n
 - **Valores ausentes:** são preservados como nulos, inclusive na chuva.
 - **Carga recente:** o projeto já passa o ID retornado por `insert_one` para a transformação. Essa leitura recupera exatamente a carga da própria execução, mesmo que outra execução grave dados depois. Por isso, foi mantida em vez de acrescentar uma busca global pela maior data. O método de leitura da coleção completa continua disponível para consultar o histórico.
 - **Dashboard:** consulta somente a tabela tratada no Neon, com a conexão do `config.py`. Não chama a API nem consulta o MongoDB.
-
-O notebook `notebooks/teste.ipynb` é um experimento anterior com SQLite e não participa do pipeline entregue. Use `run_etl.py` e os módulos de `src` para executar a versão atual.
-
+  
+imagem do dashboard
 <img width="886" height="884" alt="image" src="https://github.com/user-attachments/assets/1e4563a3-4478-412d-b0e0-5a0a301e7fb5" />
 
 ## Conferência da carga
@@ -216,10 +215,6 @@ Abra o endereço local mostrado no terminal. O dashboard apresenta:
 - gráfico de temperatura por hora e tabela das medições.
 
 As consultas ficam em cache por até 10 minutos. Se rodar o pipeline novamente e quiser ver imediatamente a atualização, interrompa o Streamlit com `Ctrl+C` e execute o comando novamente. Quando todas as temperaturas do período forem ausentes, o indicador mostra `Sem dados`.
-
-Para a entrega, faça um print do dashboard com os filtros, o indicador e o gráfico visíveis, e envie junto com o link do repositório contendo o código e este README atualizado. O print deve ser feito após executar e conferir os dados reais.
-
-Os comandos de instalação, testes, pipeline, consultas e dashboard devem ser executados manualmente pelo responsável pelo projeto. A implementação dessas adequações não inclui execução dos serviços nem validação de ponta a ponta.
 
 ## Critérios atendidos
 
